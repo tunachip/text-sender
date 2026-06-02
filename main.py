@@ -2,6 +2,8 @@ import csv
 import smtplib
 import time
 import json
+import sys
+import os
 from email.message import EmailMessage
 
 """
@@ -60,30 +62,40 @@ CARRIER_GATEWAYS = {
     "uscellular": "email.uscc.net",
 }
 
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def get_message() -> str:
+    clear_screen()
     source = input("Choose Message Source:\n1.  File\n2.  Input Here\n\n")
-    match(source.strip().to_lower()):
+    match(source.strip().lower()):
         case "1":
             filename = input("Provide Filename:\n\n")
             with open(filename, "r", encoding="utf-8") as file:
                 message = file.read()
-                print(message)
-                good = input("\n\nDoes this Message look accurate?\n\n(y) / n").strip().to_lower()
-                if good == "" or if good == "y":
+                clear_screen()
+                print("\n" + message)
+                good = input("\nDoes this Message look accurate?\n(Y)/n\n").strip().lower()
+                if good == "" or good == "y":
                     return message
                 else:
-                    break
+                    sys.exit(1)
         case "2":
             return input("Enter Message:\n\n")
         case _:
-            break
+            sys.exit(1)
 
 def clean_number(phone: str) -> str:
     return "".join(char for char in phone if char.isdigit())
 
 
-def send_sms_email(to_number: str, carrier: str, message: str, server):
+def send_sms_email(
+    sender: str,
+    to_number: str,
+    carrier: str,
+    message: str,
+    server
+):
     number = clean_number(to_number)
     carrier = carrier.lower().strip().replace("-","")
 
@@ -92,52 +104,52 @@ def send_sms_email(to_number: str, carrier: str, message: str, server):
 
     sms_address = f"{number}@{CARRIER_GATEWAYS[carrier]}"
     email = EmailMessage()
-    email["From"] = EMAIL_ADDRESS
+    email["From"] = sender
     email["To"] = sms_address
     email["Subject"] = ""
     email.set_content(message)
     server.send_message(email)
 
 def send_messages(csv_file: str, text_message: str):
+    clear_screen()
+    with open("secrets.json", "r") as file:
+        data = json.load(file)
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
         server.starttls()
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-
+        server.login(data.get("email"), data.get("password"))
         with open(csv_file, newline="", encoding="utf-8") as file:
             reader = csv.DictReader(file)
-
             for row in reader:
                 phone = row["number"]
                 carrier = row["carrier"]
-
                 try:
-                    send_sms_email(phone, carrier, text_message, server)
+                    send_sms_email(
+                        data.get("email"),
+                        phone,
+                        carrier,
+                        text_message,
+                        server
+                    )
                     print(f"Sent to {phone}")
-                    time.sleep(DELAY_SECONDS)
-
                 except Exception as e:
                     print(f"Failed for {phone}: {e}")
+                time.sleep(DELAY_SECONDS)
 
 
 def main():
-    with open("secrets.json", "r") as file:
-        data = json.load(file)
-        EMAIL_ADDRESS = data.get("email")
-        EMAIL_PASSWORD = data.get("password")
-
     print("=============================")
     print("     Text Message Sender     \n")
     print(f"  Ver. {VERSION}")
     print("=============================\n\n")
     is_test = input("Choose Action:\n1.  Run Test\n2.  Send Message\n3.  Quit\n\n")
 
-    match(is_test.strip().to_lower()):
+    match(is_test.strip().lower()):
         case ("1"):
-            send_messages("Test Message")
+            send_messages("test_numbers.csv", "Test Message")
         case ("2"):
-            send_messages(get_message())
+            send_messages("numbers.csv", get_message())
         case ("3"):
-            break
+            sys.exit(1)
 
 
 if __name__ == "__main__":
