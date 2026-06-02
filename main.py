@@ -45,13 +45,17 @@ number,provider
 """
 
 
-VERSION = 1.0
+VERSION = 1.2
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 TEST_CSV = "test_numbers.csv"
 CSV_FILE = "numbers.csv"
 DELAY_SECONDS = 5
-CARRIER_GATEWAYS = {
+
+# Set to "sms" for normal text gateways or "mms" for multimedia/longer-message gateways.
+MESSAGE_GATEWAY_TYPE = "mms"
+
+SMS_CARRIER_GATEWAYS = {
     "verizon"   : "vtext.com",
     "att"       : "txt.att.net",
     "tmobile"   : "tmomail.net",
@@ -60,6 +64,22 @@ CARRIER_GATEWAYS = {
     "cricket"   : "sms.cricketwireless.net",
     "metro"     : "mymetropcs.com",
     "uscellular": "email.uscc.net",
+}
+
+MMS_CARRIER_GATEWAYS = {
+    "verizon"   : "vzwpix.com",
+    "att"       : "mms.att.net",
+    "tmobile"   : "tmomail.net",
+    "sprint"    : "pm.sprint.com",
+    "boost"     : "myboostmobile.com",
+    "cricket"   : "mms.cricketwireless.net",
+    "metro"     : "mymetropcs.com",
+    "uscellular": "mms.uscc.net",
+}
+
+CARRIER_GATEWAYS = {
+    "sms": SMS_CARRIER_GATEWAYS,
+    "mms": MMS_CARRIER_GATEWAYS,
 }
 
 def clear_screen():
@@ -97,12 +117,17 @@ def send_sms_email(
     server
 ):
     number = clean_number(to_number)
-    carrier = carrier.lower().strip().replace("-","")
+    carrier = carrier.lower().strip().replace("-","").replace("&","")
 
-    if carrier not in CARRIER_GATEWAYS:
+    gateway_type = MESSAGE_GATEWAY_TYPE.lower().strip()
+    if gateway_type not in CARRIER_GATEWAYS:
+        raise ValueError(f"Unsupported gateway type: {MESSAGE_GATEWAY_TYPE}")
+
+    gateways = CARRIER_GATEWAYS[gateway_type]
+    if carrier not in gateways:
         raise ValueError(f"Unsupported carrier: {carrier}")
 
-    sms_address = f"{number}@{CARRIER_GATEWAYS[carrier]}"
+    sms_address = f"{number}@{gateways[carrier]}"
     email = EmailMessage()
     email["From"] = sender
     email["To"] = sms_address
@@ -145,7 +170,7 @@ def main():
 
     match(is_test.strip().lower()):
         case ("1"):
-            send_messages("test_numbers.csv", "Test Message")
+            send_messages("test_numbers.csv", get_message())
         case ("2"):
             send_messages("numbers.csv", get_message())
         case ("3"):
