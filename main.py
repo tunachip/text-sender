@@ -5,25 +5,41 @@ import json
 from email.message import EmailMessage
 
 """
-Using a Gmail Account (Burner is Sufficient), 
+Setup Instructions:
 
-First, set up 2FA (Two Factor Authentication) in the Account Settings.
+To use this tool you will need a Gmail Account (Burner is Sufficient)
+
+1. Enable 2 Factor Authentication
   'https://myaccount.google.com/signinoptions/twosv'
 
-Second, Create an App Password Here:
+2. Create an App Password
   'https://myaccount.google.com/u/2/apppasswords'
 
+3. Create 'secrets.json' File
+
 Structure secrets.json as such:
+
 {
   "email": "EMAIL_ADDRESS@google.com",
   "password": "GOOGLE_APP_PASSWORD_HERE"
 }
 
+4. Create Numbers File
+
 Place Numbers in numbers.csv as such:
+'''
 number,provider
 1234567890,tmobile
+'''
 
-I recommend sending a Test Message to your own number first as a confirmation
+5. (Optional) Create Test Numbers File
+
+Place your own Phone Number in test_numbers.csv as a test, with matching structure.
+'''
+number,provider
+1234567890,tmobile
+'''
+
 """
 
 
@@ -44,6 +60,24 @@ CARRIER_GATEWAYS = {
     "uscellular": "email.uscc.net",
 }
 
+
+def get_message() -> str:
+    source = input("Choose Message Source:\n1.  File\n2.  Input Here\n\n")
+    match(source.strip().to_lower()):
+        case "1":
+            filename = input("Provide Filename:\n\n")
+            with open(filename, "r", encoding="utf-8") as file:
+                message = file.read()
+                print(message)
+                good = input("\n\nDoes this Message look accurate?\n\n(y) / n").strip().to_lower()
+                if good == "" or if good == "y":
+                    return message
+                else:
+                    break
+        case "2":
+            return input("Enter Message:\n\n")
+        case _:
+            break
 
 def clean_number(phone: str) -> str:
     return "".join(char for char in phone if char.isdigit())
@@ -95,13 +129,13 @@ def main():
     print("     Text Message Sender     \n")
     print(f"  Ver. {VERSION}")
     print("=============================\n\n")
-    is_test = input("Choose Action:\n1. Run Test\n2. Send Message\n3. Quit")
+    is_test = input("Choose Action:\n1.  Run Test\n2.  Send Message\n3.  Quit\n\n")
 
     match(is_test.strip().to_lower()):
         case ("1"):
-            send_messages()
+            send_messages("Test Message")
         case ("2"):
-            send_messages()
+            send_messages(get_message())
         case ("3"):
             break
 
